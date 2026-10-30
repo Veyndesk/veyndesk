@@ -191,6 +191,8 @@ const I18N = {
     "remote.hint": "Enter your partner's ID, then their password. Connects directly when the network allows it, otherwise through a relay.",
     "sessions.title": "Sessions",
     "sessions.empty": "No one is connected.",
+    "sessions.live": "LIVE",
+    "sessions.entry": "#{sid} from {ip}",
     "approve.title": "Incoming connection",
     "approve.text": "They entered the correct password. Allow them to see and control this computer?",
     "approve.deny": "Deny",
@@ -267,6 +269,7 @@ const I18N = {
     "remote.hint": "Karşı tarafın ID'sini, ardından şifresini girin. Ağ izin veriyorsa doğrudan, aksi hâlde aktarıcı üzerinden bağlanır.",
     "sessions.title": "Oturumlar",
     "sessions.empty": "Bağlı olan kimse yok.",
+    "sessions.live": "CANLI",
     "approve.title": "Gelen bağlantı",
     "approve.text": "Doğru şifreyi girdiler. Bu bilgisayarı görmelerine ve kontrol etmelerine izin veriyor musunuz?",
     "approve.deny": "Reddet",
@@ -336,8 +339,11 @@ const i18n = (() => {
     const se = $("sessions"); if (se) se.dataset.empty = t("sessions.empty");
   };
   const setLang = (l) => { if (!I18N[l]) return; lang = l; try { localStorage.setItem("veyndesk.lang", l); } catch {} apply(); };
+  const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // Like t(), but HTML-escapes parameter values — use whenever the result goes into innerHTML.
+  const tHtml = (key, params) => t(key, params && Object.fromEntries(Object.entries(params).map(([k, v]) => [k, escHtml(v)])));
   apply();
-  return { t, apply, setLang, get lang() { return lang; } };
+  return { t, tHtml, apply, setLang, get lang() { return lang; } };
 })();
 // Status/reason strings that arrive from the Rust side in English → localize known ones here.
 function localizeStatus(s) {
@@ -363,7 +369,7 @@ function renderNet(i) {
     box.classList.remove("hidden");
     if (st.state === "downloading") box.textContent = i18n.t("net.downloading");
     else if (st.state === "starting") box.textContent = i18n.t("net.connecting");
-    else if (st.state === "online") box.innerHTML = i18n.t("net.online_html", { code: i.team_code, url: st.url });
+    else if (st.state === "online") box.innerHTML = i18n.tHtml("net.online_html", { code: i.team_code, url: st.url });
     else if (st.state === "failed") box.textContent = i18n.t("net.problem", { error: st.error });
     else box.textContent = i18n.t("status.starting");
     const cc = document.getElementById("copyCode"); if (cc) cc.onclick = () => navigator.clipboard.writeText(i.team_code);
@@ -416,7 +422,7 @@ async function load() {
   if (!i.server && !scanned) scanLan();
   const s = i.server_state;
   if (s.state === "running") {
-    $("lanInfo").innerHTML = i18n.t("lan.server_running", { url: s.lan_url });
+    $("lanInfo").innerHTML = i18n.tHtml("lan.server_running", { url: s.lan_url });
     $("lanInfo").classList.remove("hidden");
   } else if (s.state === "failed") {
     $("lanInfo").textContent = i18n.t("lan.server_failed", { error: s.error }); $("lanInfo").classList.remove("hidden");
@@ -432,7 +438,8 @@ function renderSessions() {
   $("sessions").innerHTML = "";
   for (const [sid, s] of sessions) {
     const d = document.createElement("div"); d.className = "sess";
-    d.innerHTML = `<span class="live">LIVE</span><span class="grow"></span>`;
+    d.innerHTML = `<span class="live"></span><span class="grow"></span>`;
+    d.querySelector(".live").textContent = i18n.t("sessions.live");
     d.querySelector(".grow").textContent = i18n.t("sessions.entry", { sid, ip: s.ip });
     $("sessions").appendChild(d);
   }
