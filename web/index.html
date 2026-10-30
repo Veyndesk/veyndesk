@@ -40,6 +40,8 @@
     font-size: 13px; cursor: pointer; }
   .foot { margin-top: 20px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
   .foot a { color: var(--muted); }
+  .foot-lang { display: flex; gap: 10px; align-items: center; }
+  .foot select { background: transparent; border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; color: var(--muted); cursor: pointer; }
 
   /* ---------- viewer ---------- */
   #viewer { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; }
@@ -69,56 +71,58 @@
 <section id="home">
   <div class="card">
     <div class="brand"><div class="logo">V</div><h1>Veyndesk</h1></div>
-    <p class="sub">Open-source remote desktop — connect from any browser.</p>
+    <p class="sub" data-i18n="home.sub">Open-source remote desktop — connect from any browser.</p>
     <form id="form" autocomplete="off">
-      <label for="pid">Partner ID</label>
+      <label for="pid" data-i18n="home.label_id">Partner ID</label>
       <input id="pid" type="text" inputmode="numeric" placeholder="123 456 789" required>
-      <label for="pw">Password</label>
-      <input id="pw" type="password" placeholder="Shown on the remote computer" required>
-      <button class="btn full" id="go" type="submit">Connect</button>
+      <label for="pw" data-i18n="home.label_pw">Password</label>
+      <input id="pw" type="password" data-i18n-ph="home.ph_pw" placeholder="Shown on the remote computer" required>
+      <button class="btn full" id="go" type="submit" data-i18n="home.connect">Connect</button>
       <div class="msg" id="msg"></div>
     </form>
     <div class="recent" id="recent"></div>
-    <div class="foot"><span id="ver">Protocol v1</span><a href="/admin">Admin panel</a></div>
+    <div class="foot"><span id="ver">Protocol v1</span>
+      <span class="foot-lang"><select id="langSel" aria-label="Language"><option value="en">English</option><option value="tr">Türkçe</option></select>
+      <a href="/admin" data-i18n="home.admin">Admin panel</a></span></div>
   </div>
 </section>
 
 <section id="viewer" class="hidden">
   <div id="bar">
-    <span class="title"><span class="dot"></span><span id="vtitle">Remote</span></span>
-    <button class="tb" id="bFit" title="Toggle fit to window / actual size">Fit</button>
-    <button class="tb" id="bFull" title="Fullscreen">Fullscreen</button>
-    <select class="tb" id="bMon" title="Monitor"></select>
-    <select class="tb" id="bKeys" title="Send special keys">
-      <option value="">Keys…</option>
+    <span class="title"><span class="dot"></span><span id="vtitle" data-i18n="viewer.title_default">Remote</span></span>
+    <button class="tb" id="bFit" data-i18n-title="viewer.fit_title" title="Toggle fit to window / actual size" data-i18n="viewer.fit">Fit</button>
+    <button class="tb" id="bFull" data-i18n-title="viewer.full_title" title="Fullscreen" data-i18n="viewer.full">Fullscreen</button>
+    <select class="tb" id="bMon" data-i18n-title="viewer.mon_title" title="Monitor"></select>
+    <select class="tb" id="bKeys" data-i18n-title="viewer.keys_title" title="Send special keys">
+      <option value="" data-i18n="viewer.keys">Keys…</option>
       <option value="ctrl_alt_del">Ctrl+Alt+Del</option>
-      <option value="ctrl_shift_esc">Task Manager</option>
+      <option value="ctrl_shift_esc" data-i18n="keys.taskmgr">Task Manager</option>
       <option value="alt_tab">Alt+Tab</option>
-      <option value="win">Windows key</option>
-      <option value="win_d">Show desktop</option>
-      <option value="win_r">Run…</option>
-      <option value="print_screen">Print Screen</option>
+      <option value="win" data-i18n="keys.win">Windows key</option>
+      <option value="win_d" data-i18n="keys.show_desktop">Show desktop</option>
+      <option value="win_r" data-i18n="keys.run">Run…</option>
+      <option value="print_screen" data-i18n="keys.print_screen">Print Screen</option>
     </select>
-    <button class="tb" id="bClip" title="Send text / clipboard to remote">Clipboard</button>
-    <button class="tb" id="bRefresh" title="Repaint full screen">Refresh</button>
-    <button class="tb danger" id="bClose">Disconnect</button>
+    <button class="tb" id="bClip" data-i18n-title="viewer.clip_title" title="Send text / clipboard to remote" data-i18n="viewer.clip">Clipboard</button>
+    <button class="tb" id="bRefresh" data-i18n-title="viewer.refresh_title" title="Repaint full screen" data-i18n="viewer.refresh">Refresh</button>
+    <button class="tb danger" id="bClose" data-i18n="viewer.disconnect">Disconnect</button>
     <span id="stats"></span>
   </div>
   <div id="stage" class="fit">
     <canvas id="screen" tabindex="0"></canvas>
-    <div id="overlay">Waiting for first frame…</div>
+    <div id="overlay" data-i18n="viewer.waiting">Waiting for first frame…</div>
   </div>
 </section>
 
 <dialog id="clipDlg">
-  <strong>Clipboard</strong>
-  <p class="sub" style="margin:6px 0 10px">Text from the remote clipboard appears here. Edit and send, or type it as keystrokes.</p>
+  <strong data-i18n="clip.title">Clipboard</strong>
+  <p class="sub" style="margin:6px 0 10px" data-i18n="clip.desc">Text from the remote clipboard appears here. Edit and send, or type it as keystrokes.</p>
   <textarea id="clipText"></textarea>
   <div class="row">
-    <button class="tb" id="clipCopy">Copy locally</button>
-    <button class="tb" id="clipType">Type it</button>
-    <button class="tb" id="clipSend">Set remote clipboard</button>
-    <button class="tb" id="clipClose">Close</button>
+    <button class="tb" id="clipCopy" data-i18n="clip.copy_local">Copy locally</button>
+    <button class="tb" id="clipType" data-i18n="clip.type">Type it</button>
+    <button class="tb" id="clipSend" data-i18n="clip.set">Set remote clipboard</button>
+    <button class="tb" id="clipClose" data-i18n="clip.close">Close</button>
   </div>
 </dialog>
 <div id="toast" class="hidden"></div>
@@ -181,6 +185,156 @@ function toast(text, ms = 2600) {
 }
 const fmtId = (id) => id.replace(/\D/g, "").replace(/(\d{3})(?=\d)/g, "$1 ");
 
+// ---------------------------------------------------------------- i18n (tiny, dependency-free)
+// Static HTML uses data-i18n / data-i18n-ph / data-i18n-title attributes; dynamic strings call
+// t("key", {params}). Language: localStorage override, else navigator.language, else en.
+const I18N = {
+  en: {
+    "home.sub": "Open-source remote desktop — connect from any browser.",
+    "home.label_id": "Partner ID",
+    "home.label_pw": "Password",
+    "home.ph_pw": "Shown on the remote computer",
+    "home.connect": "Connect",
+    "home.admin": "Admin panel",
+    "viewer.title_default": "Remote",
+    "viewer.fit": "Fit",
+    "viewer.fit_title": "Toggle fit to window / actual size",
+    "viewer.full": "Fullscreen",
+    "viewer.full_title": "Fullscreen",
+    "viewer.mon_title": "Monitor",
+    "viewer.keys_title": "Send special keys",
+    "viewer.keys": "Keys…",
+    "keys.taskmgr": "Task Manager",
+    "keys.win": "Windows key",
+    "keys.show_desktop": "Show desktop",
+    "keys.run": "Run…",
+    "keys.print_screen": "Print Screen",
+    "viewer.clip": "Clipboard",
+    "viewer.clip_title": "Send text / clipboard to remote",
+    "viewer.refresh": "Refresh",
+    "viewer.refresh_title": "Repaint full screen",
+    "viewer.disconnect": "Disconnect",
+    "viewer.waiting": "Waiting for first frame…",
+    "clip.title": "Clipboard",
+    "clip.desc": "Text from the remote clipboard appears here. Edit and send, or type it as keystrokes.",
+    "clip.copy_local": "Copy locally",
+    "clip.type": "Type it",
+    "clip.set": "Set remote clipboard",
+    "clip.close": "Close",
+    "err.enter_id": "Enter the partner's ID.",
+    "conn.direct": "Connecting directly…",
+    "conn.finding": "Finding partner…",
+    "conn.connecting": "Connecting…",
+    "conn.relay": "Connecting via relay…",
+    "conn.waiting_remote": "Waiting for the remote side…",
+    "err.p2p_timeout": "Could not open a direct connection (the network blocks it).",
+    "err.p2p_failed": "Direct connection failed.",
+    "toast.disconnected": "Disconnected",
+    "err.server_unreachable": "Could not reach the Veyndesk server at {url}. Check the address and that Windows Firewall on the server PC allows Veyndesk (port 21118).",
+    "toast.remote_clip_copied": "Remote clipboard copied",
+    "toast.remote_clip_updated": "Remote clipboard updated — open Clipboard to copy",
+    "toast.clip_set": "Remote clipboard set",
+    "toast.copied": "Copied",
+    "r.wrong_password": "Wrong password",
+    "r.partner_offline": "Partner went offline",
+    "r.declined": "The remote user declined the connection.",
+    "r.no_accept": "No one accepted the connection.",
+    "r.too_many": "Too many wrong passwords. Try again in a few minutes.",
+    "r.remote_disabled": "Remote access is disabled on this device.",
+    "r.auth_timeout": "Authentication timed out",
+    "r.kicked": "Disconnected by administrator",
+    "r.host_ended": "Host ended the session",
+  },
+  tr: {
+    "home.sub": "Açık kaynaklı uzak masaüstü — herhangi bir tarayıcıdan bağlanın.",
+    "home.label_id": "Karşı tarafın ID'si",
+    "home.label_pw": "Şifre",
+    "home.ph_pw": "Uzak bilgisayarda gösterilir",
+    "home.connect": "Bağlan",
+    "home.admin": "Yönetici paneli",
+    "viewer.title_default": "Uzak",
+    "viewer.fit": "Sığdır",
+    "viewer.fit_title": "Pencereye sığdır / gerçek boyut arasında geçiş yap",
+    "viewer.full": "Tam ekran",
+    "viewer.full_title": "Tam ekran",
+    "viewer.mon_title": "Monitör",
+    "viewer.keys_title": "Özel tuşlar gönder",
+    "viewer.keys": "Tuşlar…",
+    "keys.taskmgr": "Görev Yöneticisi",
+    "keys.win": "Windows tuşu",
+    "keys.show_desktop": "Masaüstünü göster",
+    "keys.run": "Çalıştır…",
+    "keys.print_screen": "Print Screen",
+    "viewer.clip": "Pano",
+    "viewer.clip_title": "Metni / panoyu karşı tarafa gönder",
+    "viewer.refresh": "Yenile",
+    "viewer.refresh_title": "Tüm ekranı yeniden çiz",
+    "viewer.disconnect": "Bağlantıyı kes",
+    "viewer.waiting": "İlk kare bekleniyor…",
+    "clip.title": "Pano",
+    "clip.desc": "Uzak panodaki metin burada görünür. Düzenleyip gönderebilir ya da tuş vuruşları olarak yazabilirsiniz.",
+    "clip.copy_local": "Yerel panoya kopyala",
+    "clip.type": "Tuşlayarak yaz",
+    "clip.set": "Uzak panoyu ayarla",
+    "clip.close": "Kapat",
+    "err.enter_id": "Karşı tarafın ID'sini girin.",
+    "conn.direct": "Doğrudan bağlanılıyor…",
+    "conn.finding": "Karşı taraf aranıyor…",
+    "conn.connecting": "Bağlanılıyor…",
+    "conn.relay": "Aktarıcı üzerinden bağlanılıyor…",
+    "conn.waiting_remote": "Karşı taraf bekleniyor…",
+    "err.p2p_timeout": "Doğrudan bağlantı açılamadı (ağ engelliyor).",
+    "err.p2p_failed": "Doğrudan bağlantı başarısız oldu.",
+    "toast.disconnected": "Bağlantı kesildi",
+    "err.server_unreachable": "{url} adresindeki Veyndesk sunucusuna ulaşılamadı. Adresi ve sunucu bilgisayarındaki Windows Güvenlik Duvarı'nın Veyndesk'e (21118 numaralı port) izin verip vermediğini kontrol edin.",
+    "toast.remote_clip_copied": "Uzak pano kopyalandı",
+    "toast.remote_clip_updated": "Uzak pano güncellendi — kopyalamak için Panoyu açın",
+    "toast.clip_set": "Uzak pano ayarlandı",
+    "toast.copied": "Kopyalandı",
+    "r.wrong_password": "Hatalı şifre",
+    "r.partner_offline": "Karşı taraf çevrimdışı oldu",
+    "r.declined": "Uzaktaki kullanıcı bağlantıyı reddetti.",
+    "r.no_accept": "Bağlantıyı kimse kabul etmedi.",
+    "r.too_many": "Çok fazla hatalı şifre denemesi. Birkaç dakika sonra tekrar deneyin.",
+    "r.remote_disabled": "Bu cihazda uzak erişim devre dışı bırakıldı.",
+    "r.auth_timeout": "Kimlik doğrulama zaman aşımına uğradı",
+    "r.kicked": "Yönetici tarafından bağlantı kesildi",
+    "r.host_ended": "Oturumu karşı taraf sonlandırdı",
+  },
+};
+const i18n = (() => {
+  let lang = null;
+  try { lang = localStorage.getItem("veyndesk.lang"); } catch {}
+  if (!lang || !I18N[lang]) lang = (navigator.language || "en").toLowerCase().startsWith("tr") ? "tr" : "en";
+  const t = (key, params) => {
+    let s = (I18N[lang] && I18N[lang][key]) ?? I18N.en[key] ?? key;
+    if (params) for (const [k, v] of Object.entries(params)) s = s.replaceAll("{" + k + "}", String(v));
+    return s;
+  };
+  const apply = () => {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+    document.querySelectorAll("[data-i18n-ph]").forEach(el => el.placeholder = t(el.dataset.i18nPh));
+    document.querySelectorAll("[data-i18n-title]").forEach(el => el.title = t(el.dataset.i18nTitle));
+  };
+  const setLang = (l) => { if (!I18N[l]) return; lang = l; try { localStorage.setItem("veyndesk.lang", l); } catch {} apply(); };
+  apply();
+  return { t, apply, setLang, get lang() { return lang; } };
+})();
+// Known English reason strings that arrive over the wire from the host/server → localize on display.
+const REASONS = {
+  "Wrong password": "r.wrong_password",
+  "Partner went offline": "r.partner_offline",
+  "The remote user declined the connection.": "r.declined",
+  "No one accepted the connection.": "r.no_accept",
+  "Too many wrong passwords. Try again in a few minutes.": "r.too_many",
+  "Remote access is disabled on this device.": "r.remote_disabled",
+  "Authentication timed out": "r.auth_timeout",
+  "Disconnected by administrator": "r.kicked",
+  "Host ended the session": "r.host_ended",
+};
+const tReason = (s) => (REASONS[s] !== undefined ? i18n.t(REASONS[s]) : s);
+
 // ---------------------------------------------------------------- connect screen
 const params = new URLSearchParams(location.search);
 // Desktop app passes its settings this way (the viewer is bundled inside Veyndesk.exe).
@@ -205,7 +359,7 @@ $("form").addEventListener("submit", (e) => {
   e.preventDefault();
   const id = $("pid").value.replace(/\D/g, "");
   const pw = $("pw").value;
-  if (id.length < 6) { $("msg").textContent = "Enter the partner's ID."; return; }
+  if (id.length < 6) { $("msg").textContent = i18n.t("err.enter_id"); return; }
   connect(id, pw);
 });
 
@@ -233,7 +387,7 @@ class P2PSocket {
     dc.onopen = () => { this.readyState = 1; this.onopen && this.onopen(); };
     dc.onmessage = (e) => typeof e.data === "string" ? this.onmessage({ data: e.data }) : this._chunk(e.data);
     dc.onclose = () => this._closed();
-    pc.onconnectionstatechange = () => { if (["failed", "closed"].includes(pc.connectionState)) this._fail("Direct connection failed."); };
+    pc.onconnectionstatechange = () => { if (["failed", "closed"].includes(pc.connectionState)) this._fail(i18n.t("err.p2p_failed")); };
     await pc.setLocalDescription(await pc.createOffer());
     await new Promise((res) => {
       if (pc.iceGatheringState === "complete") return res();
@@ -245,9 +399,9 @@ class P2PSocket {
     if (typeof answer === "string" && answer.startsWith("{")) answer = JSON.parse(answer);
     if (typeof answer === "object") { this.relay = answer.relay || ""; answer = answer.sdp; }
     if (this.readyState === 3) return;
-    $("go").textContent = "Connecting directly…";
+    $("go").textContent = i18n.t("conn.direct");
     await pc.setRemoteDescription({ type: "answer", sdp: answer });
-    setTimeout(() => { if (this.readyState === 0) this._fail("Could not open a direct connection (the network blocks it)."); }, 7000);
+    setTimeout(() => { if (this.readyState === 0) this._fail(i18n.t("err.p2p_timeout")); }, 7000);
   }
   _fail(msg) { if (!this.failMsg) this.failMsg = msg; this._closed(); }
   _closed() {
@@ -280,25 +434,28 @@ class P2PSocket {
 function connect(id, password, viaServer) {
   $("msg").textContent = ""; $("go").disabled = true;
   const p2p = !viaServer && EMBED && EMBED.p2p;
-  $("go").textContent = p2p ? "Finding partner…" : "Connecting…";
+  $("go").textContent = p2p ? i18n.t("conn.finding") : i18n.t("conn.connecting");
   S = { id, fw: 0, fh: 0, held: new Set(), frames: 0, bytes: 0, lastStats: performance.now(),
         hostStats: null, queue: Promise.resolve(), pending: 0, connected: false, name: "" };
   ws = p2p ? new P2PSocket(id) : new WebSocket(wsUrl());
   ws.binaryType = "arraybuffer";
-  ws.onopen = () => { $("go").textContent = "Connecting…"; send({ t: "connect", id }); };
+  ws.onopen = () => { $("go").textContent = i18n.t("conn.connecting"); send({ t: "connect", id }); };
   ws.onmessage = (ev) => typeof ev.data === "string" ? onControl(JSON.parse(ev.data), password) : onFrame(ev.data);
   ws.onclose = (ev) => {
     const wasConnected = S && S.connected;
     // Direct connection impossible → try the team / LAN server, if there is one.
     if (p2p && ev && ev.p2pFailedEarly && !$("msg").textContent && (ev.relay || params.get("server"))) {
       if (ev.relay) params.set("server", ev.relay);   // partner's own relay (works through any network)
-      $("go").textContent = "Connecting via relay…";
+      $("go").textContent = i18n.t("conn.relay");
       connect(id, password, true); return;
     }
     resetHome();
-    if (wasConnected) toast("Disconnected");
-    else if (!$("msg").textContent) $("msg").textContent = (ev && ev.reason) ||
-      ("Could not reach the Veyndesk server at " + wsUrl().replace(/^ws/, "http").replace("/ws/viewer", "") + ". Check the address and that Windows Firewall on the server PC allows Veyndesk (port 21118).");
+    if (wasConnected) toast(i18n.t("toast.disconnected"));
+    else if (!$("msg").textContent) {
+      const reason = tReason(ev && ev.reason);
+      $("msg").textContent = reason ||
+        i18n.t("err.server_unreachable", { url: wsUrl().replace(/^ws/, "http").replace("/ws/viewer", "") });
+    }
   };
 }
 
@@ -309,7 +466,7 @@ function onControl(m, password) {
     case "challenge": {
       const secret = sha256hex(`${m.salt}:${password}`);
       send({ t: "auth", proof: sha256hex(`${secret}:${m.nonce}`) });
-      $("go").textContent = "Waiting for the remote side…";
+      $("go").textContent = i18n.t("conn.waiting_remote");
       break;
     }
     case "accepted": {
@@ -324,9 +481,9 @@ function onControl(m, password) {
       canvas.focus();
       break;
     }
-    case "rejected": $("msg").textContent = m.reason; ws.close(); break;
-    case "error": $("msg").textContent = m.message; if (S && S.connected) toast(m.message); ws.close(); break;
-    case "closed": toast(m.reason); break;
+    case "rejected": $("msg").textContent = tReason(m.reason); ws.close(); break;
+    case "error": $("msg").textContent = tReason(m.message); if (S && S.connected) toast(tReason(m.message)); ws.close(); break;
+    case "closed": toast(tReason(m.reason)); break;
     case "host": onHostEvent(m.msg); break;
   }
 }
@@ -337,7 +494,7 @@ function onHostEvent(e) {
     S.remoteClip = e.text;
     $("clipText").value = e.text;
     if (navigator.clipboard && document.hasFocus()) navigator.clipboard.writeText(e.text).then(
-      () => toast("Remote clipboard copied"), () => toast("Remote clipboard updated — open Clipboard to copy"));
+      () => toast(i18n.t("toast.remote_clip_copied")), () => toast(i18n.t("toast.remote_clip_updated")));
   } else if (e.t === "monitors") {
     const sel = $("bMon"); sel.innerHTML = "";
     e.list.forEach(mo => {
@@ -390,7 +547,7 @@ function resetHome() {
   ws = null;
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   $("viewer").classList.add("hidden"); $("home").classList.remove("hidden");
-  $("go").disabled = false; $("go").textContent = "Connect";
+  $("go").disabled = false; $("go").textContent = i18n.t("home.connect");
   document.title = "Veyndesk"; renderRecent();
   if (S) S.connected = false;
 }
@@ -496,14 +653,21 @@ $("bClip").onclick = async () => {
   try { if (navigator.clipboard) { const t = await navigator.clipboard.readText(); if (t) $("clipText").value = t; } } catch {}
   $("clipDlg").showModal();
 };
-$("clipSend").onclick = () => { send({ t: "clipboard", text: $("clipText").value }); toast("Remote clipboard set"); $("clipDlg").close(); canvas.focus(); };
+$("clipSend").onclick = () => { send({ t: "clipboard", text: $("clipText").value }); toast(i18n.t("toast.clip_set")); $("clipDlg").close(); canvas.focus(); };
 $("clipType").onclick = () => { send({ t: "text", text: $("clipText").value }); $("clipDlg").close(); canvas.focus(); };
 $("clipCopy").onclick = () => {
-  navigator.clipboard?.writeText($("clipText").value).then(() => toast("Copied"), () => { $("clipText").select(); document.execCommand("copy"); toast("Copied"); });
+  navigator.clipboard?.writeText($("clipText").value).then(() => toast(i18n.t("toast.copied")), () => { $("clipText").select(); document.execCommand("copy"); toast(i18n.t("toast.copied")); });
 };
 $("clipClose").onclick = () => { $("clipDlg").close(); canvas.focus(); };
 if (!EMBED) window.addEventListener("beforeunload", (e) => { if (S && S.connected) { e.preventDefault(); } });
 if (EMBED) document.querySelector(".foot a").classList.add("hidden");
+
+$("langSel").value = i18n.lang;
+$("langSel").onchange = () => {
+  i18n.setLang($("langSel").value);
+  renderRecent();
+  if (!S || !S.connected) $("go").textContent = i18n.t("home.connect");
+};
 </script>
 </body>
 </html>

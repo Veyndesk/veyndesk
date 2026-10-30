@@ -44,48 +44,49 @@
 <header>
   <div class="logo">V</div><h1>Veyndesk Admin</h1>
   <nav id="tabs" class="hidden">
-    <button data-tab="devices" class="on">Devices</button>
-    <button data-tab="sessions">Sessions</button>
-    <button data-tab="audit">Audit log</button>
+    <button data-tab="devices" class="on" data-i18n="tabs.devices">Devices</button>
+    <button data-tab="sessions" data-i18n="tabs.sessions">Sessions</button>
+    <button data-tab="audit" data-i18n="tabs.audit">Audit log</button>
   </nav>
   <span style="margin-left:auto" class="muted" id="updated"></span>
-  <button class="tb hidden" id="logout">Sign out</button>
+  <select class="tb hidden" id="langSel" aria-label="Language"><option value="en">English</option><option value="tr">Türkçe</option></select>
+  <button class="tb hidden" id="logout" data-i18n="admin.signout">Sign out</button>
 </header>
 
 <div id="login">
-  <strong>Admin token</strong>
-  <p class="muted">Printed by the server on startup, or stored in <code>data/admin_token</code>.</p>
-  <input type="password" id="token" placeholder="Paste admin token">
-  <button class="tb" id="signin">Sign in</button>
+  <strong data-i18n="login.title">Admin token</strong>
+  <p class="muted" data-i18n-html="login.desc">Printed by the server on startup, or stored in <code>data/admin_token</code>.</p>
+  <input type="password" id="token" data-i18n-ph="login.ph" placeholder="Paste admin token">
+  <button class="tb" id="signin" data-i18n="login.signin">Sign in</button>
   <p id="lerr" style="color:var(--bad)"></p>
 </div>
 
 <main id="app" class="hidden">
   <div class="kpis">
-    <div class="kpi"><b id="kOnline">0</b><span>Devices online</span></div>
-    <div class="kpi"><b id="kTotal">0</b><span>Devices known</span></div>
-    <div class="kpi"><b id="kSessions">0</b><span>Active sessions</span></div>
-    <div class="kpi"><b id="kFailed">0</b><span>Failed logins (24h)</span></div>
+    <div class="kpi"><b id="kOnline">0</b><span data-i18n="kpi.online">Devices online</span></div>
+    <div class="kpi"><b id="kTotal">0</b><span data-i18n="kpi.total">Devices known</span></div>
+    <div class="kpi"><b id="kSessions">0</b><span data-i18n="kpi.sessions">Active sessions</span></div>
+    <div class="kpi"><b id="kFailed">0</b><span data-i18n="kpi.failed">Failed logins (24h)</span></div>
   </div>
 
   <section data-panel="devices">
-    <div class="toolbar"><input type="search" id="q" placeholder="Search ID, name, note…"></div>
+    <div class="toolbar"><input type="search" id="q" data-i18n-ph="ph.search" placeholder="Search ID, name, note…"></div>
     <div class="wrap"><table>
-      <thead><tr><th></th><th>ID</th><th>Name</th><th>OS</th><th>Last seen</th><th>IP</th><th>Note</th><th></th></tr></thead>
+      <thead><tr><th></th><th>ID</th><th data-i18n="th.name">Name</th><th>OS</th><th data-i18n="th.last_seen">Last seen</th><th>IP</th><th data-i18n="th.note">Note</th><th></th></tr></thead>
       <tbody id="devices"></tbody>
     </table></div>
   </section>
 
   <section data-panel="sessions" class="hidden">
     <div class="wrap"><table>
-      <thead><tr><th>Session</th><th>Device</th><th>Viewer IP</th><th>State</th><th>Started</th><th></th></tr></thead>
+      <thead><tr><th data-i18n="th.session">Session</th><th data-i18n="th.device">Device</th><th data-i18n="th.viewer_ip">Viewer IP</th><th data-i18n="th.state">State</th><th data-i18n="th.started">Started</th><th></th></tr></thead>
       <tbody id="sessions"></tbody>
     </table></div>
   </section>
 
   <section data-panel="audit" class="hidden">
     <div class="wrap"><table>
-      <thead><tr><th>Time</th><th>Event</th><th>Device</th><th>Session</th><th>IP</th><th>Detail</th></tr></thead>
+      <thead><tr><th data-i18n="th.time">Time</th><th data-i18n="th.event">Event</th><th data-i18n="th.device">Device</th><th data-i18n="th.session">Session</th><th>IP</th><th data-i18n="th.detail">Detail</th></tr></thead>
       <tbody id="audit"></tbody>
     </table></div>
   </section>
@@ -95,11 +96,121 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ---------------------------------------------------------------- i18n (tiny, dependency-free)
+// Static HTML uses data-i18n / data-i18n-ph / data-i18n-html attributes; dynamic strings call
+// t("key", {params}). Language: localStorage override, else navigator.language, else en.
+const I18N = {
+  en: {
+    "tabs.devices": "Devices",
+    "tabs.sessions": "Sessions",
+    "tabs.audit": "Audit log",
+    "admin.signout": "Sign out",
+    "login.title": "Admin token",
+    "login.desc": "Printed by the server on startup, or stored in <code>data/admin_token</code>.",
+    "login.ph": "Paste admin token",
+    "login.signin": "Sign in",
+    "kpi.online": "Devices online",
+    "kpi.total": "Devices known",
+    "kpi.sessions": "Active sessions",
+    "kpi.failed": "Failed logins (24h)",
+    "ph.search": "Search ID, name, note…",
+    "th.name": "Name",
+    "th.last_seen": "Last seen",
+    "th.note": "Note",
+    "th.session": "Session",
+    "th.device": "Device",
+    "th.viewer_ip": "Viewer IP",
+    "th.state": "State",
+    "th.started": "Started",
+    "th.time": "Time",
+    "th.event": "Event",
+    "th.detail": "Detail",
+    "ago.now": "now",
+    "ago.min": "{n} min ago",
+    "ago.hour": "{n} h ago",
+    "ago.day": "{n} d ago",
+    "state.online": "online",
+    "state.offline": "offline",
+    "ph.note": "Add note…",
+    "admin.connect": "Connect",
+    "admin.no_devices": "No devices yet. Run the host agent with --server pointing here.",
+    "admin.active": "active",
+    "admin.authenticating": "authenticating",
+    "admin.disconnect": "Disconnect",
+    "admin.no_sessions": "No sessions right now.",
+    "admin.updated": "Updated {time}",
+    "admin.update_failed": "Update failed",
+    "admin.invalid_token": "Invalid token",
+  },
+  tr: {
+    "tabs.devices": "Cihazlar",
+    "tabs.sessions": "Oturumlar",
+    "tabs.audit": "Denetim kaydı",
+    "admin.signout": "Oturumu kapat",
+    "login.title": "Yönetici anahtarı",
+    "login.desc": "Sunucu tarafından ilk açılışta yazdırılır veya <code>data/admin_token</code> dosyasında saklanır.",
+    "login.ph": "Yönetici anahtarını yapıştırın",
+    "login.signin": "Oturum aç",
+    "kpi.online": "Çevrimiçi cihaz",
+    "kpi.total": "Bilinen cihaz",
+    "kpi.sessions": "Etkin oturum",
+    "kpi.failed": "Hatalı giriş (24 sa)",
+    "ph.search": "ID, ad, not ara…",
+    "th.name": "Ad",
+    "th.last_seen": "Son görülme",
+    "th.note": "Not",
+    "th.session": "Oturum",
+    "th.device": "Cihaz",
+    "th.viewer_ip": "İzleyici IP",
+    "th.state": "Durum",
+    "th.started": "Başlangıç",
+    "th.time": "Zaman",
+    "th.event": "Olay",
+    "th.detail": "Ayrıntı",
+    "ago.now": "şimdi",
+    "ago.min": "{n} dk önce",
+    "ago.hour": "{n} sa önce",
+    "ago.day": "{n} g önce",
+    "state.online": "çevrimiçi",
+    "state.offline": "çevrimdışı",
+    "ph.note": "Not ekle…",
+    "admin.connect": "Bağlan",
+    "admin.no_devices": "Henüz cihaz yok. Host aracını --server seçeneğiyle bu sunucuyu gösterecek şekilde çalıştırın.",
+    "admin.active": "etkin",
+    "admin.authenticating": "kimlik doğrulanıyor",
+    "admin.disconnect": "Bağlantıyı kes",
+    "admin.no_sessions": "Şu anda oturum yok.",
+    "admin.updated": "Güncellendi: {time}",
+    "admin.update_failed": "Güncelleme başarısız",
+    "admin.invalid_token": "Geçersiz anahtar",
+  },
+};
+const i18n = (() => {
+  let lang = null;
+  try { lang = localStorage.getItem("veyndesk.lang"); } catch {}
+  if (!lang || !I18N[lang]) lang = (navigator.language || "en").toLowerCase().startsWith("tr") ? "tr" : "en";
+  const t = (key, params) => {
+    let s = (I18N[lang] && I18N[lang][key]) ?? I18N.en[key] ?? key;
+    if (params) for (const [k, v] of Object.entries(params)) s = s.replaceAll("{" + k + "}", String(v));
+    return s;
+  };
+  const apply = () => {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+    document.querySelectorAll("[data-i18n-ph]").forEach(el => el.placeholder = t(el.dataset.i18nPh));
+    document.querySelectorAll("[data-i18n-html]").forEach(el => el.innerHTML = t(el.dataset.i18nHtml));
+  };
+  const setLang = (l) => { if (!I18N[l]) return; lang = l; try { localStorage.setItem("veyndesk.lang", l); } catch {} apply(); refresh(); };
+  apply();
+  return { t, apply, setLang, get lang() { return lang; } };
+})();
+
 const fmtId = (id) => id.replace(/(\d{3})(?=\d)/g, "$1 ");
 const ago = (ts) => {
   const s = Math.max(0, Date.now() / 1000 - ts);
-  if (s < 60) return "now"; if (s < 3600) return Math.floor(s / 60) + " min ago";
-  if (s < 86400) return Math.floor(s / 3600) + " h ago"; return Math.floor(s / 86400) + " d ago";
+  if (s < 60) return i18n.t("ago.now"); if (s < 3600) return i18n.t("ago.min", { n: Math.floor(s / 60) });
+  if (s < 86400) return i18n.t("ago.hour", { n: Math.floor(s / 3600) }); return i18n.t("ago.day", { n: Math.floor(s / 86400) });
 };
 const time = (ts) => new Date(ts * 1000).toLocaleString();
 let token = ""; try { token = sessionStorage.getItem("vd.token") || ""; } catch {}
@@ -119,7 +230,7 @@ function signOut() {
 }
 async function signIn() {
   token = $("token").value.trim();
-  try { await api("/api/hosts"); } catch { $("lerr").textContent = "Invalid token"; return; }
+  try { await api("/api/hosts"); } catch { $("lerr").textContent = i18n.t("admin.invalid_token"); return; }
   try { sessionStorage.setItem("vd.token", token); } catch {}
   $("login").classList.add("hidden"); $("app").classList.remove("hidden");
   $("tabs").classList.remove("hidden"); $("logout").classList.remove("hidden");
@@ -141,12 +252,12 @@ function renderHosts() {
   $("devices").innerHTML = hosts
     .filter(h => !q || [h.id, h.name, h.note, h.os].join(" ").toLowerCase().includes(q))
     .map(h => `<tr>
-      <td><span class="dot ${h.online ? "on" : ""}" title="${h.online ? "online" : "offline"}"></span>${h.sessions ? `<span class="muted">${h.sessions}▸</span>` : ""}</td>
+      <td><span class="dot ${h.online ? "on" : ""}" title="${h.online ? i18n.t("state.online") : i18n.t("state.offline")}"></span>${h.sessions ? `<span class="muted">${h.sessions}▸</span>` : ""}</td>
       <td class="mono">${esc(fmtId(h.id))}</td><td>${esc(h.name)}</td><td class="muted">${esc(h.os)} · v${esc(h.version)}</td>
-      <td>${h.online ? "online" : esc(ago(h.last_seen))}</td><td class="mono muted">${esc(h.last_ip)}</td>
-      <td><input class="note" data-id="${esc(h.id)}" value="${esc(h.note)}" placeholder="Add note…"></td>
-      <td>${h.online ? `<a href="/?id=${encodeURIComponent(h.id)}" target="_blank">Connect</a>` : ""}</td></tr>`).join("")
-    || `<tr><td colspan="8" class="muted">No devices yet. Run the host agent with --server pointing here.</td></tr>`;
+      <td>${h.online ? i18n.t("state.online") : esc(ago(h.last_seen))}</td><td class="mono muted">${esc(h.last_ip)}</td>
+      <td><input class="note" data-id="${esc(h.id)}" value="${esc(h.note)}" placeholder="${i18n.t("ph.note")}"></td>
+      <td>${h.online ? `<a href="/?id=${encodeURIComponent(h.id)}" target="_blank">${i18n.t("admin.connect")}</a>` : ""}</td></tr>`).join("")
+    || `<tr><td colspan="8" class="muted">${i18n.t("admin.no_devices")}</td></tr>`;
   document.querySelectorAll("input.note").forEach(i => i.onchange = () =>
     api(`/api/hosts/${encodeURIComponent(i.dataset.id)}/note`, { method: "POST", body: JSON.stringify({ note: i.value }) }));
 }
@@ -162,18 +273,21 @@ async function refresh() {
     const active = s.filter(x => x.active); $("kSessions").textContent = active.length;
     $("kFailed").textContent = a.filter(x => x.event === "auth_failed" && x.ts > Date.now() / 1000 - 86400).length;
     $("sessions").innerHTML = s.map(x => `<tr><td class="mono">#${x.sid}</td><td class="mono">${esc(fmtId(x.host_id))}</td>
-      <td class="mono">${esc(x.viewer_ip)}</td><td>${x.active ? "active" : "authenticating"}</td><td>${esc(time(x.started))}</td>
-      <td><button class="tb danger" data-kick="${x.sid}">Disconnect</button></td></tr>`).join("")
-      || `<tr><td colspan="6" class="muted">No sessions right now.</td></tr>`;
+      <td class="mono">${esc(x.viewer_ip)}</td><td>${x.active ? i18n.t("admin.active") : i18n.t("admin.authenticating")}</td><td>${esc(time(x.started))}</td>
+      <td><button class="tb danger" data-kick="${x.sid}">${i18n.t("admin.disconnect")}</button></td></tr>`).join("")
+      || `<tr><td colspan="6" class="muted">${i18n.t("admin.no_sessions")}</td></tr>`;
     document.querySelectorAll("[data-kick]").forEach(b => b.onclick = async () => { await api(`/api/sessions/${b.dataset.kick}/kick`, { method: "POST" }); refresh(); });
     $("audit").innerHTML = a.map(x => `<tr><td>${esc(time(x.ts))}</td><td class="ev-${esc(x.event)}">${esc(x.event.replace(/_/g, " "))}</td>
       <td class="mono">${esc(x.host_id ? fmtId(x.host_id) : "")}</td><td class="mono">${x.sid ?? ""}</td><td class="mono muted">${esc(x.ip)}</td>
       <td class="muted">${esc(x.detail)}</td></tr>`).join("");
-    $("updated").textContent = "Updated " + new Date().toLocaleTimeString();
-  } catch (e) { $("updated").textContent = "Update failed"; }
+    $("updated").textContent = i18n.t("admin.updated", { time: new Date().toLocaleTimeString() });
+  } catch (e) { $("updated").textContent = i18n.t("admin.update_failed"); }
 }
 setInterval(refresh, 5000);
 if (token) { $("token").value = token; signIn(); }
+
+$("langSel").value = i18n.lang;
+$("langSel").onchange = () => i18n.setLang($("langSel").value);
 </script>
 </body>
 </html>
