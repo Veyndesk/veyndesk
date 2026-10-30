@@ -64,6 +64,12 @@
   dialog textarea { width: 100%; min-height: 140px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
   .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
   @media (max-width: 640px) { #stats { display: none; } .card { padding: 22px; } }
+  /* Native <select> menus: always dark (WebKitGTK drew them white with light text). */
+  :root { color-scheme: dark; }
+  select { -webkit-appearance: none; appearance: none; background-color: var(--panel2) !important; color: var(--text) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center; padding-right: 26px !important; }
+  select option { background-color: var(--panel2); color: var(--text); }
 </style>
 </head>
 <body>
