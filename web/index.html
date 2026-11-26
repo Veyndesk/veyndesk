@@ -58,6 +58,8 @@
   #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--panel);
     border: 1px solid var(--border); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 5;
     box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+  #blocked { flex: none; padding: 8px 16px; text-align: center; font-size: 13px; background: #3d2e00; color: #f2cc60;
+    border-bottom: 1px solid #6e5400; }
   #overlay { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; }
   dialog { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 14px; padding: 20px; width: min(480px, 92vw); }
   dialog::backdrop { background: rgba(0,0,0,.5); }
@@ -114,6 +116,7 @@
     <button class="tb danger" id="bClose" data-i18n="viewer.disconnect">Disconnect</button>
     <span id="stats"></span>
   </div>
+  <div id="blocked" class="hidden" role="status" aria-live="polite"></div>
   <div id="stage" class="fit">
     <canvas id="screen" tabindex="0"></canvas>
     <div id="overlay" data-i18n="viewer.waiting">Waiting for first frame…</div>
@@ -221,6 +224,8 @@ const I18N = {
     "viewer.refresh_title": "Repaint full screen",
     "viewer.disconnect": "Disconnect",
     "viewer.waiting": "Waiting for first frame…",
+    "viewer.blocked_secure": "The remote computer is showing an administrator prompt or the lock screen. Veyndesk can't see or control that screen yet — someone at the remote computer must answer it. The image will resume afterwards.",
+    "viewer.blocked_capture": "The remote screen can't be captured right now. Showing the last image; it will resume automatically.",
     "clip.title": "Clipboard",
     "clip.desc": "Text from the remote clipboard appears here. Edit and send, or type it as keystrokes.",
     "clip.copy_local": "Copy locally",
@@ -277,6 +282,8 @@ const I18N = {
     "viewer.refresh_title": "Tüm ekranı yeniden çiz",
     "viewer.disconnect": "Bağlantıyı kes",
     "viewer.waiting": "İlk kare bekleniyor…",
+    "viewer.blocked_secure": "Uzak bilgisayarda yönetici izni penceresi veya kilit ekranı açık. Veyndesk bu ekranı henüz göremez ve kontrol edemez — uzak bilgisayardaki biri yanıtlamalı. Ardından görüntü devam edecek.",
+    "viewer.blocked_capture": "Uzak ekran şu anda yakalanamıyor. Son görüntü gösteriliyor; otomatik olarak devam edecek.",
     "clip.title": "Pano",
     "clip.desc": "Uzak panodaki metin burada görünür. Düzenleyip gönderebilir ya da tuş vuruşları olarak yazabilirsiniz.",
     "clip.copy_local": "Yerel panoya kopyala",
@@ -483,6 +490,7 @@ function onControl(m, password) {
       document.title = `${m.name} — Veyndesk`;
       $("home").classList.add("hidden"); $("viewer").classList.remove("hidden");
       $("overlay").classList.remove("hidden");
+      $("blocked").classList.add("hidden");
       if (store.get("veyndesk.fit", true)) $("stage").classList.add("fit"); else $("stage").classList.remove("fit");
       canvas.focus();
       break;
@@ -496,6 +504,11 @@ function onControl(m, password) {
 
 function onHostEvent(e) {
   if (e.t === "stats") S.hostStats = e;
+  else if (e.t === "blocked") {
+    const b = $("blocked");
+    b.textContent = i18n.t(e.reason === "secure_desktop" ? "viewer.blocked_secure" : "viewer.blocked_capture");
+    b.classList.toggle("hidden", !e.active);
+  }
   else if (e.t === "clipboard") {
     S.remoteClip = e.text;
     $("clipText").value = e.text;
