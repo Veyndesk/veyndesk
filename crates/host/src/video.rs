@@ -30,6 +30,10 @@ const Q_REFINE: u8 = 92;
 const REFINE_AFTER: Duration = Duration::from_millis(350);
 const REFINE_TILES_PER_FRAME: usize = 96;
 const MAX_RUN: usize = 8;
+/// Capture must keep failing this long before the viewer is told the screen is unavailable.
+const BLOCKED_AFTER: Duration = Duration::from_millis(1500);
+const SECURE_DESKTOP: &str = "secure_desktop";
+const CAPTURE_FAILED: &str = "capture_failed";
 
 pub enum VideoCmd {
     Add(u32),
@@ -342,6 +346,36 @@ fn build_frame(frame: &Frame, g: &Grid, sid: u32, seq: u32, sel: &[bool], q: u8)
     (encode_frame(Some(sid), seq, g.w as u16, g.h as u16, &tiles), bytes)
 }
 
+/// Windows: is the input desktop something other than the user's normal one?
+/// That's the UAC "secure desktop" or the lock / login screen (`Winlogon`). A normal-user
+/// process can't open that desktop at all, so an access failure also means "secure".
+#[cfg(windows)]
+fn on_secure_desktop() -> bool {
+    use windows_sys::Win32::System::StationsAndDesktops::{
+        CloseDesktop, GetUserObjectInformationW, OpenInputDesktop, DESKTOP_READOBJECTS, UOI_NAME,
+    };
+    unsafe {
+        let desk = OpenInputDesktop(0, 0, DESKTOP_READOBJECTS);
+        if desk.is_null() {
+            return true;
+        }
+        let mut name = [0u16; 64];
+        let mut needed = 0u32;
+        let ok = GetUserObjectInformationW(desk, UOI_NAME, name.as_mut_ptr().cast(), (name.len() * 2) as u32, &mut needed);
+        CloseDesktop(desk);
+        if ok == 0 {
+            return false; // can't tell; let the capture result decide
+        }
+        let len = name.iter().position(|&c| c == 0).unwrap_or(name.len());
+        !String::from_utf16_lossy(&name[..len]).eq_ignore_ascii_case("Default")
+    }
+}
+
+#[cfg(not(windows))]
+fn on_secure_desktop() -> bool {
+    false
+}
+
 fn send_event(out: &UnboundedSender<Outgoing>, sid: u32, msg: HostEvent) {
     let m = HostToServer::ToViewer { sid, msg };
     let _ = out.send(Outgoing::Text(serde_json::to_string(&m).unwrap()));
@@ -374,6 +408,11 @@ fn video_loop(source: &mut dyn FrameSource, rx: mpsc::Receiver<VideoCmd>, out: U
     let mut grid = Grid::new(0, 0);
     let mut monitor: u32 = 0;
     let mut cmds: Vec<VideoCmd> = vec![];
+    // Why the screen can't be shown right now (None = frames are flowing).
+    let mut blocked: Option<&'static str> = None;
+    let mut failing_since: Option<Instant> = None;
+    let mut last_desk_check = Instant::now() - Duration::from_secs(1);
+    let mut secure = false;
 
     loop {
         // Idle: block until somebody connects (no capture, ~0% CPU).
@@ -394,6 +433,9 @@ fn video_loop(source: &mut dyn FrameSource, rx: mpsc::Receiver<VideoCmd>, out: U
                     send_event(&out, sid, HostEvent::Monitors { list: mons.clone(), active: monitor });
                     *shared.monitors.lock().unwrap() = mons;
                     sessions.insert(sid, Sess::new(grid.n()));
+                    if let Some(reason) = blocked {
+                        send_event(&out, sid, HostEvent::Blocked { active: true, reason: reason.into() });
+                    }
                 }
                 VideoCmd::Remove(sid) => {
                     sessions.remove(&sid);
@@ -420,11 +462,46 @@ fn video_loop(source: &mut dyn FrameSource, rx: mpsc::Receiver<VideoCmd>, out: U
         }
 
         let started = Instant::now();
-        let frame = match source.capture(monitor) {
-            Ok(f) => f,
+        if last_desk_check.elapsed() >= Duration::from_millis(250) {
+            last_desk_check = started;
+            secure = on_secure_desktop();
+        }
+        let captured = if secure {
+            // Windows UAC prompt / lock screen: only a SYSTEM process can see it, so don't
+            // even try (capture would fail or return a black frame). Keep the last frame.
+            Err(anyhow::anyhow!("input desktop is the secure desktop"))
+        } else {
+            source.capture(monitor)
+        };
+        let frame = match captured {
+            Ok(f) => {
+                failing_since = None;
+                if let Some(reason) = blocked.take() {
+                    for &sid in sessions.keys() {
+                        send_event(&out, sid, HostEvent::Blocked { active: false, reason: reason.into() });
+                    }
+                }
+                f
+            }
             Err(e) => {
-                // e.g. Windows secure desktop (UAC / lock screen) — keep sessions, retry.
                 debug!("capture failed: {e}");
+                let since = *failing_since.get_or_insert(started);
+                let reason = if secure {
+                    Some(SECURE_DESKTOP)
+                } else if since.elapsed() >= BLOCKED_AFTER {
+                    Some(CAPTURE_FAILED)
+                } else {
+                    blocked
+                };
+                if reason != blocked {
+                    blocked = reason;
+                    if let Some(r) = reason {
+                        warn!("screen unavailable to viewers: {r}");
+                        for &sid in sessions.keys() {
+                            send_event(&out, sid, HostEvent::Blocked { active: true, reason: r.into() });
+                        }
+                    }
+                }
                 std::thread::sleep(Duration::from_millis(200));
                 continue;
             }

@@ -33,7 +33,7 @@ webrtc = "0.21.1"
 xcap = "0.9.8"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.60", features = ["Win32_UI_HiDpi", "Win32_Foundation"] }
+windows-sys = { version = "0.60", features = ["Win32_UI_HiDpi", "Win32_Foundation", "Win32_System_StationsAndDesktops"] }
 
 [[bin]]
 name = "veyndesk-host"
