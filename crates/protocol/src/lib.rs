@@ -109,6 +109,10 @@ pub enum HostEvent {
     Clipboard { text: String },
     Monitors { list: Vec<MonitorInfo>, active: u32 },
     Stats { fps: f32, quality: u8, kbps: u32 },
+    /// The host can't show its screen right now; the viewer keeps the last frame and shows why.
+    /// `reason`: "secure_desktop" (Windows UAC prompt / lock screen) or "capture_failed".
+    /// Sent again with `active: false` once frames flow again.
+    Blocked { active: bool, reason: String },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/protocol", "crates/server", "crates/host"]
+members = ["crates/protocol", "crates/server", "crates/host", "crates/service"]
 exclude = ["desktop/src-tauri"]
 # The Tauri desktop app lives in desktop/src-tauri and is built separately
 # (it needs WebView2 on Windows / webkit2gtk on Linux).

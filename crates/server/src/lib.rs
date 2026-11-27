@@ -28,6 +28,14 @@ use veyndesk_protocol::*;
 const INDEX_HTML: &str = include_str!("../../../web/index.html");
 const ADMIN_HTML: &str = include_str!("../../../web/admin.html");
 
+static HIDE_TOKEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Don't print the admin token in the log (Windows service: the log file outlives the
+/// console and is shared with every admin). The log then says where the token is stored.
+pub fn hide_admin_token_in_logs() {
+    HIDE_TOKEN.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
 /// Runs the server until the process exits. Used by the `veyndesk-server` binary and
 /// embedded in the desktop app ("run a server on this PC").
 pub async fn serve(bind: &str, data_dir: std::path::PathBuf) -> anyhow::Result<()> {
@@ -37,6 +45,7 @@ pub async fn serve(bind: &str, data_dir: std::path::PathBuf) -> anyhow::Result<(
 
 pub async fn serve_on(listener: tokio::net::TcpListener, data_dir: std::path::PathBuf) -> anyhow::Result<()> {
     let bind = listener.local_addr()?;
+    let token_file = data_dir.join("admin_token");
     let app = Arc::new(App::load(data_dir)?);
 
     let router = Router::new()
@@ -53,7 +62,13 @@ pub async fn serve_on(listener: tokio::net::TcpListener, data_dir: std::path::Pa
         .with_state(app.clone());
 
     info!("Veyndesk server listening on http://{bind}");
-    info!("Admin panel: http://{bind}/admin  (token: {})", app.admin_token);
+    if !HIDE_TOKEN.load(std::sync::atomic::Ordering::SeqCst) {
+        info!("Admin panel: http://{bind}/admin  (token: {})", app.admin_token);
+    } else if std::env::var_os("VEYNDESK_ADMIN_TOKEN").is_some() {
+        info!("Admin panel: http://{bind}/admin  (token: the VEYNDESK_ADMIN_TOKEN variable)");
+    } else {
+        info!("Admin panel: http://{bind}/admin  (token: in {})", token_file.display());
+    }
     axum::serve(listener, router.into_make_service_with_connect_info::<SocketAddr>()).await?;
     Ok(())
 }

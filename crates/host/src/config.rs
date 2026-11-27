@@ -54,10 +54,44 @@ pub fn one_time_password() -> (String, Credentials) {
     (pw, creds)
 }
 
+static MACHINE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Windows service / SYSTEM worker: keep the config in `%ProgramData%\Veyndesk`, readable
+/// only by SYSTEM and Administrators (the desktop app talks to the worker instead, see
+/// [`crate::ipc`]). Call before anything reads the config.
+pub fn use_machine_config() {
+    MACHINE.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
+fn is_machine() -> bool {
+    MACHINE.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+/// `%ProgramData%\Veyndesk` (Windows service mode).
+pub fn machine_dir() -> PathBuf {
+    std::env::var_os("ProgramData").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\ProgramData")).join("Veyndesk")
+}
+
+/// Create the machine folder and restrict it to SYSTEM + Administrators (idempotent;
+/// propagates to files already inside, e.g. a config copied by the installer).
+pub fn secure_machine_dir() -> anyhow::Result<()> {
+    let dir = machine_dir();
+    std::fs::create_dir_all(&dir)?;
+    #[cfg(windows)]
+    crate::winsec::protect_path(&dir, crate::winsec::ADMIN_ONLY_DIR_SDDL)?;
+    Ok(())
+}
+
 pub fn config_path() -> PathBuf {
     static DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
-    DIR.get_or_init(|| app_dir(&dirs::config_dir().unwrap_or_else(|| PathBuf::from("."))))
-        .join("host.json")
+    DIR.get_or_init(|| {
+        if is_machine() {
+            machine_dir()
+        } else {
+            app_dir(&dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")))
+        }
+    })
+    .join("host.json")
 }
 
 /// `<config>/Veyndesk`. Installs from before the rename kept everything (ID, settings, server data)

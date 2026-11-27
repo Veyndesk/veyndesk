@@ -1,13 +1,17 @@
 //! Veyndesk host agent core: used by the CLI (`veyndesk-host`) and the Tauri desktop app.
 
 pub mod config;
+pub mod desktop;
 pub mod input;
+pub mod ipc;
 pub mod video;
 pub mod p2p;
+#[cfg(windows)]
+pub mod winsec;
 
 use config::HostConfig;
 use futures_util::{SinkExt, StreamExt};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
@@ -30,7 +34,7 @@ pub enum Outgoing {
 }
 
 /// Status updates for a UI (CLI prints them, Tauri forwards them to the webview).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum UiEvent {
     Connecting { url: String },
