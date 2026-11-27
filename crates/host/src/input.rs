@@ -1,7 +1,7 @@
 //! Remote input injection + clipboard sync, on a dedicated thread
 //! (enigo / arboard handles are not `Send` on every platform).
 
-use crate::{video::Shared, Outgoing};
+use crate::{desktop::DesktopFollower, video::Shared, Outgoing};
 use enigo::{Axis, Button, Coordinate, Direction, Enigo, Key, Keyboard, Mouse, Settings};
 use std::{
     collections::HashSet,
@@ -11,6 +11,14 @@ use std::{
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, warn};
 use veyndesk_protocol::{HostEvent, HostToServer, ViewerInput};
+
+/// Raises the real Ctrl+Alt+Del (Secure Attention Sequence). Set by the Windows worker,
+/// which asks the service to call `SendSAS`; returns `false` if that failed.
+static SAS_HANDLER: std::sync::OnceLock<Box<dyn Fn() -> bool + Send + Sync>> = std::sync::OnceLock::new();
+
+pub fn set_secure_attention_handler(f: impl Fn() -> bool + Send + Sync + 'static) {
+    let _ = SAS_HANDLER.set(Box::new(f));
+}
 
 pub enum InputCmd {
     Event(u32, ViewerInput),
@@ -37,13 +45,10 @@ fn input_loop(
     out: UnboundedSender<Outgoing>,
     active_sessions: Arc<Mutex<HashSet<u32>>>,
 ) {
-    let mut enigo = match Enigo::new(&Settings::default()) {
-        Ok(e) => Some(e),
-        Err(e) => {
-            warn!("input injection unavailable: {e}");
-            None
-        }
-    };
+    // Windows: move to the input desktop (UAC / lock screen) before injecting, when SYSTEM.
+    let mut follower = DesktopFollower::new();
+    follower.follow();
+    let mut enigo = new_enigo();
     let mut clipboard = arboard::Clipboard::new().ok();
     let mut last_clip: Option<String> = clipboard.as_mut().and_then(|c| c.get_text().ok());
     let mut last_poll = Instant::now();
@@ -51,7 +56,16 @@ fn input_loop(
     let mut held_buttons: HashSet<u8> = HashSet::new();
 
     loop {
-        let cmd = rx.recv_timeout(Duration::from_millis(500));
+        let cmd = rx.recv_timeout(crate::desktop::CHECK_EVERY);
+
+        if follower.follow().is_some() {
+            // `SendInput` targets the calling thread's desktop; rebuild enigo on the new one.
+            // Dropping the old instance releases whatever it still held down.
+            drop(enigo.take());
+            enigo = new_enigo();
+            held_keys.clear();
+            held_buttons.clear();
+        }
 
         // Host → viewer clipboard sync (polled; cheap).
         if last_poll.elapsed() > Duration::from_millis(800) {
@@ -137,6 +151,16 @@ fn input_loop(
     }
 }
 
+fn new_enigo() -> Option<Enigo> {
+    match Enigo::new(&Settings::default()) {
+        Ok(e) => Some(e),
+        Err(e) => {
+            warn!("input injection unavailable: {e}");
+            None
+        }
+    }
+}
+
 fn dir(down: bool) -> Direction {
     if down { Direction::Press } else { Direction::Release }
 }
@@ -152,9 +176,11 @@ fn map_button(b: u8) -> Button {
 }
 
 fn special(en: &mut Enigo, name: &str) -> enigo::InputResult<()> {
+    if name == "ctrl_alt_del" && SAS_HANDLER.get().is_some_and(|f| f()) {
+        return Ok(());
+    }
     let combo: &[&str] = match name {
-        // Note: real Ctrl+Alt+Del (the Secure Attention Sequence) can only be raised by a
-        // SYSTEM service via SendSAS(); see ROADMAP. This sends the key combo.
+        // Without the service, the real Ctrl+Alt+Del (SendSAS) is impossible; send the keys.
         "ctrl_alt_del" => &["ControlLeft", "AltLeft", "Delete"],
         "alt_tab" => &["AltLeft", "Tab"],
         "win" => &["MetaLeft"],

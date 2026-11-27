@@ -9,7 +9,7 @@
 //!   ("progressive refinement"), so text ends up crisp.
 //! * Capture stops entirely when nobody is watching.
 
-use crate::Outgoing;
+use crate::{desktop, Outgoing};
 use jpeg_encoder::{ColorType, Encoder, SamplingFactor};
 use rayon::prelude::*;
 use std::{
@@ -69,17 +69,27 @@ pub struct Frame {
 pub trait FrameSource {
     fn monitors(&mut self) -> Vec<MonitorInfo>;
     fn capture(&mut self, index: u32) -> anyhow::Result<Frame>;
+    /// The capturing thread was moved to another desktop (Windows: `Default` ⇄ `Winlogon`).
+    /// Drop anything bound to the old one.
+    fn desktop_changed(&mut self, _name: &str) {}
 }
 
 // ------------------------------------------------------------------ sources
 
 pub struct XcapSource {
     cache: Vec<xcap::Monitor>,
+    /// Windows: capture with plain GDI instead of xcap (set while on a non-`Default` desktop).
+    #[cfg(windows)]
+    gdi_only: bool,
 }
 
 impl XcapSource {
     pub fn new() -> Self {
-        Self { cache: vec![] }
+        Self {
+            cache: vec![],
+            #[cfg(windows)]
+            gdi_only: false,
+        }
     }
     fn refresh(&mut self) {
         let mut list = xcap::Monitor::all().unwrap_or_default();
@@ -115,24 +125,63 @@ impl FrameSource for XcapSource {
         if self.cache.is_empty() {
             self.refresh();
         }
-        let m = self
-            .cache
-            .get(index as usize)
-            .or_else(|| self.cache.first())
-            .ok_or_else(|| anyhow::anyhow!("no monitors found"))?;
-        let origin = (m.x().unwrap_or(0), m.y().unwrap_or(0));
-        let img = match m.capture_image() {
-            Ok(i) => i,
-            Err(e) => {
-                self.cache.clear(); // monitor layout may have changed
-                return Err(e.into());
+        let m = self.cache.get(index as usize).or_else(|| self.cache.first());
+        #[cfg(windows)]
+        {
+            let rect = m.map(|m| {
+                (m.x().unwrap_or(0), m.y().unwrap_or(0), m.width().unwrap_or(0) as i32, m.height().unwrap_or(0) as i32)
+            });
+            if self.gdi_only || m.is_none() {
+                return gdi_frame(rect.unwrap_or_else(desktop::primary_rect));
             }
-        };
-        let (w, h) = (img.width() as usize, img.height() as usize);
-        let logical_w = m.width().unwrap_or(w as u32).max(1);
-        let scale = if cfg!(target_os = "macos") { w as f32 / logical_w as f32 } else { 1.0 };
-        Ok(Frame { width: w, height: h, rgba: img.into_raw(), origin, scale })
+            let m = m.unwrap();
+            match m.capture_image() {
+                Ok(img) => Ok(Frame {
+                    width: img.width() as usize,
+                    height: img.height() as usize,
+                    origin: (rect.unwrap().0, rect.unwrap().1),
+                    rgba: img.into_raw(),
+                    scale: 1.0,
+                }),
+                Err(e) => {
+                    let r = gdi_frame(rect.unwrap()).map_err(|g| anyhow::anyhow!("xcap: {e}; gdi: {g}"));
+                    self.cache.clear(); // monitor layout may have changed
+                    r
+                }
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            let m = m.ok_or_else(|| anyhow::anyhow!("no monitors found"))?;
+            let origin = (m.x().unwrap_or(0), m.y().unwrap_or(0));
+            let img = match m.capture_image() {
+                Ok(i) => i,
+                Err(e) => {
+                    self.cache.clear(); // monitor layout may have changed
+                    return Err(e.into());
+                }
+            };
+            let (w, h) = (img.width() as usize, img.height() as usize);
+            let logical_w = m.width().unwrap_or(w as u32).max(1);
+            let scale = if cfg!(target_os = "macos") { w as f32 / logical_w as f32 } else { 1.0 };
+            Ok(Frame { width: w, height: h, rgba: img.into_raw(), origin, scale })
+        }
     }
+
+    fn desktop_changed(&mut self, _name: &str) {
+        // HMONITORs / DCs from the old desktop are stale: re-enumerate on next capture.
+        self.cache.clear();
+        #[cfg(windows)]
+        {
+            self.gdi_only = !_name.eq_ignore_ascii_case("Default");
+        }
+    }
+}
+
+#[cfg(windows)]
+fn gdi_frame((x, y, w, h): (i32, i32, i32, i32)) -> anyhow::Result<Frame> {
+    let rgba = desktop::gdi_capture(x, y, w, h)?;
+    Ok(Frame { width: w as usize, height: h as usize, rgba, origin: (x, y), scale: 1.0 })
 }
 
 /// Animated synthetic screen for headless testing (`VEYNDESK_TEST_PATTERN=1`).
@@ -346,36 +395,6 @@ fn build_frame(frame: &Frame, g: &Grid, sid: u32, seq: u32, sel: &[bool], q: u8)
     (encode_frame(Some(sid), seq, g.w as u16, g.h as u16, &tiles), bytes)
 }
 
-/// Windows: is the input desktop something other than the user's normal one?
-/// That's the UAC "secure desktop" or the lock / login screen (`Winlogon`). A normal-user
-/// process can't open that desktop at all, so an access failure also means "secure".
-#[cfg(windows)]
-fn on_secure_desktop() -> bool {
-    use windows_sys::Win32::System::StationsAndDesktops::{
-        CloseDesktop, GetUserObjectInformationW, OpenInputDesktop, DESKTOP_READOBJECTS, UOI_NAME,
-    };
-    unsafe {
-        let desk = OpenInputDesktop(0, 0, DESKTOP_READOBJECTS);
-        if desk.is_null() {
-            return true;
-        }
-        let mut name = [0u16; 64];
-        let mut needed = 0u32;
-        let ok = GetUserObjectInformationW(desk, UOI_NAME, name.as_mut_ptr().cast(), (name.len() * 2) as u32, &mut needed);
-        CloseDesktop(desk);
-        if ok == 0 {
-            return false; // can't tell; let the capture result decide
-        }
-        let len = name.iter().position(|&c| c == 0).unwrap_or(name.len());
-        !String::from_utf16_lossy(&name[..len]).eq_ignore_ascii_case("Default")
-    }
-}
-
-#[cfg(not(windows))]
-fn on_secure_desktop() -> bool {
-    false
-}
-
 fn send_event(out: &UnboundedSender<Outgoing>, sid: u32, msg: HostEvent) {
     let m = HostToServer::ToViewer { sid, msg };
     let _ = out.send(Outgoing::Text(serde_json::to_string(&m).unwrap()));
@@ -411,8 +430,10 @@ fn video_loop(source: &mut dyn FrameSource, rx: mpsc::Receiver<VideoCmd>, out: U
     // Why the screen can't be shown right now (None = frames are flowing).
     let mut blocked: Option<&'static str> = None;
     let mut failing_since: Option<Instant> = None;
-    let mut last_desk_check = Instant::now() - Duration::from_secs(1);
+    let mut last_desk_check: Option<Instant> = None;
     let mut secure = false;
+    // Windows: keeps this thread on the input desktop when running as SYSTEM.
+    let mut follower = desktop::DesktopFollower::new();
 
     loop {
         // Idle: block until somebody connects (no capture, ~0% CPU).
@@ -462,9 +483,19 @@ fn video_loop(source: &mut dyn FrameSource, rx: mpsc::Receiver<VideoCmd>, out: U
         }
 
         let started = Instant::now();
-        if last_desk_check.elapsed() >= Duration::from_millis(250) {
-            last_desk_check = started;
-            secure = on_secure_desktop();
+        if let Some(name) = follower.follow() {
+            // Moved to another desktop (e.g. UAC prompt appeared): rebuild the capture
+            // source and send every viewer a full frame of the new screen.
+            source.desktop_changed(&name);
+            prev = None;
+            for s in sessions.values_mut() {
+                s.reset(grid.n());
+            }
+        }
+        if last_desk_check.is_none_or(|t| t.elapsed() >= desktop::CHECK_EVERY) {
+            last_desk_check = Some(started);
+            // Secure desktop we could not follow (process isn't SYSTEM).
+            secure = !follower.on_input_desktop() && desktop::on_secure_desktop();
         }
         let captured = if secure {
             // Windows UAC prompt / lock screen: only a SYSTEM process can see it, so don't
