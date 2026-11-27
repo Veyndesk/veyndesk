@@ -25,8 +25,9 @@ jobs:
             desktop/src-tauri -> target
       - name: Test
         run: cargo test --workspace
-      - name: Build server and console host
-        run: cargo build --release -p veyndesk-host -p veyndesk-server
+      - name: Build server, console host and Windows service
+        # veyndesk-service.exe is bundled into the installer (tauri.windows.conf.json)
+        run: cargo build --release -p veyndesk-host -p veyndesk-server -p veyndesk-service
       - name: Build Veyndesk app + installer
         working-directory: desktop
         run: npx --yes @tauri-apps/cli@2 build --bundles nsis

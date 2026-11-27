@@ -38,7 +38,9 @@
   per-session permissions (keyboard, clipboard, files).
 * **File transfer** (drag & drop in viewer, chunked over the data channel).
 * **Windows service** for unattended access: runs as SYSTEM, can capture the login screen / UAC
-  secure desktop and send real Ctrl+Alt+Del via `SendSAS`.
+  secure desktop and send real Ctrl+Alt+Del via `SendSAS`. *Implemented in `crates/service`
+  (service + SYSTEM worker per console session, named-pipe UI, installer hooks); still needs
+  testing on real Windows machines.*
 * **End-to-end encryption**: X25519 key agreement (host key pinned in address book) + ChaCha20-Poly1305;
   server can no longer read relayed traffic.
 * **Accounts & teams**: users, groups, device ownership, 2FA, SSO (OIDC), address book sync,
