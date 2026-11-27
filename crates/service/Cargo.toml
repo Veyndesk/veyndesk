@@ -1,0 +1,32 @@
+[package]
+name = "veyndesk-service"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Veyndesk Windows service: runs the host as SYSTEM in the console session"
+
+[dependencies]
+anyhow = "1.0.104"
+serde_json = "1.0.154"
+tokio = { version = "1.54.0", features = ["full"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+veyndesk-host = { version = "0.1.0", path = "../host" }
+veyndesk-server = { version = "0.1.0", path = "../server" }
+
+[target.'cfg(windows)'.dependencies]
+windows-service = "0.8.1"
+windows-sys = { version = "0.60", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authentication_Identity",
+    "Win32_System_JobObjects",
+    "Win32_System_RemoteDesktop",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+] }
+
+[[bin]]
+name = "veyndesk-service"
+path = "src/main.rs"
